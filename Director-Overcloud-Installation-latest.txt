@@ -1,0 +1,991 @@
+**** How to we Prepare my TripleO Lab using Vmware Setup*****
+
+Note:
+
+
+Step-1 IN Vmware create the VM with min 24 GB RAM , 4 CORE Cpu and 200 GB Disk 
+
+    1  hostname
+    2  ifconfig 
+    3  vim /etc/sysconfig/network-scripts/ifcfg-ens33 
+    4  hostname
+    5  ifconfig 
+    6  df  -h  
+    7  mkdir  /redhatdvd  
+    8  lsblk  
+    9  cd  /run/media/root
+   10  ls
+   11  cd RHEL-7.5\ Server.x86_64
+   12  ls
+   13  cp -rf  *  /redhatdvd
+   14  cd
+   15  cd /etc/yum.repos.d
+   16  ls
+   17  vim redhatdvd.repo  
+
+[redhatdvd]
+name=this is my local yum for dvd based rpms.
+baseurl=file:///redhatdvd
+enabled=1
+gpgcheck=0
+
+:wq
+
+   18  cd
+   19  yum clean all  
+   20  yum  repolist  
+   21  yum install  vsftpd*  -y  
+   22  systemctl  start vsftpd  
+   23  systemctl  enable   vsftpd  
+   24  systemctl   stop  firewalld  
+   25  systemctl   disable    firewalld 
+   26  ls /var/ftp
+   27  cd  /tmp/
+   28  ls
+   29  cd VMwareDnD
+   30  ls
+   31  cd cBhF5g
+   32  ls
+   33  mkdir /var/ftp/pub/isoimage 
+   34  mkdir /var/ftp/pub/glanceimages
+   35  mkdir /var/ftp/pub/cloudrpms
+   36  mv rhel-server-7.5-x86_64-dvd.iso  /var/ftp/pub/isoimage/
+   37  ls    /var/ftp/pub/isoimage/
+   38  mv osp-small.qcow2   /var/ftp/pub/glanceimages
+   39  ls /var/ftp/pub/glanceimages
+   40  ls
+   41  history 
+   42  ls  
+   43  cd openstack-version-13/
+   44  ls
+   45  mv rhel*   /var/ftp/pub/cloudrpms
+   46  ls
+   47  cd ..
+   48  ls
+   49  rm -rf openstack-version-13/
+   50  ls
+   51  cd 
+   52  cd /var/ftp/pub
+   53  ls
+   54  cd cloudrpms
+   55  ls
+   56  cd ..
+   57  ls
+   58  cd isoimage
+   59  ls
+   60  cd  ..
+   61  cd glanceimages
+   62  ls
+   63  cd ..
+   64  pwd
+   65  ls
+   66  mkdir  redhatdvd
+   67  ls
+   68  cd /redhatdvd
+   69  ls
+   70  cp -rf   *  /var/ftp/pub/redhatdvd 
+   71  cd
+   72  ls  /var/ftp/pub
+
+#yum install qemu* virt* libvirt* -y
+#systemctl restart libvirtd
+#systemctl enable libvirtd
+77  virsh list 
+   78  cat /sys/module/kvm_intel/parameters/nested
+
+ N
+
+   79  vim /etc/modprobe.d/kvm.conf
+options kvm_intel nested=Y
+
+:wq
+
+# reboot 
+
+
+78  cat /sys/module/kvm_intel/parameters/nested
+
+ Y      ===> OKAY
+
+
+#virsh net-list
+#virsh net-destroy default
+#virsh net-undefine default
+#virsh net-list
+#vim /tmp/external.xml
+
+<network>
+   <name>external</name>
+   <forward mode='nat'>
+      <nat> <port start='1024' end='65535'/>
+      </nat>
+   </forward>
+   <ip address='192.168.122.1' netmask='255.255.255.0'>
+   </ip>
+</network>
+
+:wq!
+#systemctl restart network
+#systemctl restart libvirtd
+#ifconfig
+#virsh net-define /tmp/external.xml
+#virsh net-autostart external
+#virsh net-start external
+#ifconfig
+#vim /tmp/provisioning.xml
+<network>
+   <name>provisioning</name>
+   <ip address='192.168.126.254' netmask='255.255.255.0'>
+   </ip>
+</network>
+:wq!
+#virsh net-define /tmp/provisioning.xml
+#virsh net-autostart provisioning
+#virsh net-start provisioning
+#virsh net-list
+#echo "192.168.122.90 director.example.com  director"  >> /etc/hosts
+#systemctl stop firewalld
+#systemctl disable firewalld
+#ifconfig
+
+
+#virt-manager &
+
+
+Now Create Virtual Machine with min 6 GB Ram and 60 GB Disk..
+
+Also take two interface with one provistioning network first after then add
+one more interface with External-Nat network....to assign the IP respectivly...
+
+After the installation..please check ip on both interface..
+
+Both interface must be ping with physical machine...
+
+[root@localhost ~]# hostnamectl set-hostname director.example.com 
+
+[root@director ~]# systemctl status firewalld 
+
+[root@director ~]# systemctl stop firewalld 
+
+[root@director ~]# systemctl disable firewalld 
+
+
+[root@director ~]# vim /etc/sysconfig/network-scripts/ifcfg-eth0
+
+TYPE=Ethernet
+BOOTPROTO=none
+DEFROUTE=yes
+IPV6INIT=no
+NAME=eth1
+DEVICE=eth1
+ONBOOT=yes
+IPADDR=192.168.126.10
+PREFIX=24
+GATEWAY=192.168.126.254
+DNS1=192.168.122.1
+
+:wq (save and exit) 
+
+[root@director ~]# vim /etc/sysconfig/network-scripts/ifcfg-eth1 
+
+TYPE="Ethernet"
+BOOTPROTO="none"
+DEFROUTE="yes"
+IPV6INIT="no"
+NAME="eth0"
+DEVICE="eth0"
+ONBOOT="yes"
+IPADDR="192.168.122.90"
+PREFIX="24"
+GATEWAY="192.168.122.1"
+DNS1="192.168.122.1"
+
+:wq (save and exit) 
+
+
+
+[root@director ~]# reboot
+
+[root@director ~]# ifconfig 
+
+
+eth0: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+        inet 192.168.126.10  netmask 255.255.255.0  broadcast 192.168.126.255
+        inet6 fe80::5054:ff:fe17:fdf7  prefixlen 64  scopeid 0x20<link>
+        ether 52:54:00:17:fd:f7  txqueuelen 1000  (Ethernet)
+        RX packets 68  bytes 3536 (3.4 KiB)
+        RX errors 0  dropped 68  overruns 0  frame 0
+        TX packets 13  bytes 830 (830.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+eth1: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+        inet 192.168.122.90  netmask 255.255.255.0  broadcast 192.168.122.255
+        inet6 fe80::5054:ff:fe0f:54f2  prefixlen 64  scopeid 0x20<link>
+        ether 52:54:00:0f:54:f2  txqueuelen 1000  (Ethernet)
+        RX packets 36  bytes 5085 (4.9 KiB)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 44  bytes 5731 (5.5 KiB)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+lo: flags=73<UP,LOOPBACK,RUNNING>  mtu 65536
+        inet 127.0.0.1  netmask 255.0.0.0
+        inet6 ::1  prefixlen 128  scopeid 0x10<host>
+        loop  txqueuelen 1  (Local Loopback)
+        RX packets 0  bytes 0 (0.0 B)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 0  bytes 0 (0.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+[root@director ~]# cd  /etc/yum.repos.d/
+[root@director yum.repos.d]# ls
+[root@director yum.repos.d]# rm -rf  *
+[root@director yum.repos.d]# vim dvd.repo
+
+[rhel-dvd]
+name="Remote classroom copy of dvd"
+baseurl=ftp://192.168.122.1/pub/redhatdvd
+gpgcheck=0
+
+:wq
+
+[root@director yum.repos.d]# vim openstack.repo 
+[OpenStack]
+name=Red Hat OpenStack 10.0 for RHEL 7 (RPMs)
+baseurl=ftp://192.168.122.1/pub/cloudrpm/rhel-7-server-openstack-10-rpms
+enabled=1
+gpgcheck=0
+[OStools]
+name=Red Hat OpenStack Tools 10.0 for Red
+baseurl=ftp://192.168.122.1/pub/cloudrpm/rhel-7-server-openstack-10-tools-rpms
+enabled=1
+gpgcheck=0
+
+[OSoptools]
+name=Red Hat OpenStack 10.0
+baseurl=ftp://192.168.122.1/pub/cloudrpm/rhel-7-server-openstack-10-optools-rpms
+enabled=1
+gpgcheck=0
+[OSdevtools]
+name=Red Hat OpenStack 10.0 for R
+baseurl=ftp://192.168.122.1/pub/cloudrpm/rhel-7-server-openstack-10-devtools-rpms
+enabled=1
+gpgcheck=0
+
+[OSdevtools1]
+name=Red Hat OpenStack 10.0 for RHEL 7 Development Tools (RPMs)
+baseurl=ftp://192.168.122.1/pub/cloudrpm/common
+enabled=1
+gpgcheck=0
+
+[OSdevtools2]
+name=Red Hat OpenStack 10.0 for RHEL 7 Development Tools (RPMs)
+baseurl=ftp://192.168.122.1/pub/cloudrpm/extras
+enabled=1
+gpgcheck=0
+
+
+
+[OSdevtools3]
+name=Red Hat OpenStack 10.0 for RHEL 7 Development Tools (RPMs)
+baseurl=ftp://192.168.122.1/pub/cloudrpm/rhel-7-server-rhceph-2-mon-rpms
+enabled=1
+gpgcheck=0
+[OSdevtools4]
+name=Red Hat OpenStack 10.0 for RHEL 7 Development Tools (RPMs)
+baseurl=ftp://192.168.122.1/pub/cloudrpm/updates
+enabled=1
+gpgcheck=0
+
+
+[OSdevtools5]
+name=Red Hat OpenStack 10.0 for RHEL 7 Development Tools (RPMs)
+baseurl=ftp://192.168.122.1/pub/cloudrpm/rhel-7-server-rhceph-2-osd-rpms
+enabled=1
+gpgcheck=0
+[OSdevtools6]
+name=Red Hat OpenStack 10.0 for RHEL 7 Development Tools (RPMs)
+baseurl=ftp://192.168.122.1/pub/cloudrpm/rhel-7-server-rhceph-2-tools-rpms
+enabled=1
+gpgcheck=0
+
+
+[OSdevtools7]
+name=Red Hat OpenStack 10.0 for RHEL 7 Development Tools (RPMs)
+baseurl=ftp://192.168.122.1/pub/cloudrpm/rhel-7-server-rhscon-2-agent-rpms
+enabled=1
+gpgcheck=0
+
+[OSdevtools8]
+name=Red Hat OpenStack 10.0 for RHEL 7 Development Tools (RPMs)
+baseurl=ftp://192.168.122.1/pub/cloudrpm/rhel-7-server-rhscon-2-installer-rpms
+enabled=1
+gpgcheck=0
+[OSdevtools9]
+name=Red Hat OpenStack 10.0 for RHEL 7 Development Tools (RPMs)
+baseurl=ftp://192.168.122.1/pub/cloudrpm/rhel-7-server-rhscon-2-main-rpms
+enabled=1
+gpgcheck=0
+
+:wq
+
+
+[root@director yum.repos.d]# yum repolist  
+Loaded plugins: langpacks, product-id, search-disabled-repos, subscription-manager
+This system is not registered to Red Hat Subscription Management. You can use subscription-manager to register.
+repo id                       repo name                                                                   status
+!OSdevtools                   Red Hat OpenStack 10.0 for R                                                    3
+!OSdevtools1                  Red Hat OpenStack 10.0 for RHEL 7 Development Tools (RPMs)                     77
+!OSdevtools2                  Red Hat OpenStack 10.0 for RHEL 7 Development Tools (RPMs)                     76
+!OSdevtools3                  Red Hat OpenStack 10.0 for RHEL 7 Development Tools (RPMs)                     41
+!OSdevtools4                  Red Hat OpenStack 10.0 for RHEL /7 Development Tools (RPMs)                    510
+!OSdevtools5                  Red Hat OpenStack 10.0 for RHEL 7 Development Tools (RPMs)                     28
+!OSdevtools6                  Red Hat OpenStack 10.0 for RHEL 7 Development Tools (RPMs)                     35
+!OSdevtools7                  Red Hat OpenStack 10.0 for RHEL 7 Development Tools (RPMs)                     19
+!OSdevtools8                  Red Hat OpenStack 10.0 for RHEL 7 Development Tools (RPMs)                     46
+!OSdevtools9                  Red Hat OpenStack 10.0 for RHEL 7 Development Tools (RPMs)                     29
+!OSoptools                    Red Hat OpenStack 10.0                                                         99
+!OStools                      Red Hat OpenStack Tools 10.0 for Red                                           84
+!OpenStack                    Red Hat OpenStack 10.0 for RHEL 7 (RPMs)                                      680
+!rhel-dvd                     "Remote classroom copy of dvd"                                              4,751
+repolist: 6,478
+[root@director yum.repos.d]# 
+[root@director yum.repos.d]# cd
+[root@director ~]# 
+[root@director ~]# 
+[root@director ~]# 
+[root@director ~]# yum install -y python-tripleoclient
+
+[root@director ~]# echo "192.168.122.90 director.example.com director" >> /etc/hosts
+
+[root@director ~]# useradd stack
+[root@director ~]# echo 'redhat' |passwd --stdin stack 
+
+[root@director ~]# echo "stack ALL=(root) NOPASSWD:ALL" | tee -a /etc/sudoers.d/stack
+[root@director ~]# chmod 0440 /etc/sudoers.d/stack
+
+[root@director ~]# 	
+
+Create directories for images and templates. Images are used to boot initial systems and provide baseline OS. 
+Templates are used to customize deployment.
+
+[stack@director ~]$ mkdir ~/images
+[stack@director ~]$ mkdir ~/templates
+
+
+[stack@director ~]$ cp /usr/share/instack-undercloud/undercloud.conf.sample ~/undercloud.conf
+
+[stack@director ~]$ vim ~/undercloud.conf 
+
+###Add the following lines in default section 
+
+[DEFAULT]
+local_ip = 192.168.126.10/24    {chane here your ip}
+undercloud_public_vip = 192.168.126.2
+undercloud_admin_vip = 192.168.126.3
+local_interface = eth0                 {change here your first interface name if it is wrong}
+masquerade_network = 192.168.126.0/24
+dhcp_start = 192.168.126.100
+dhcp_end = 192.168.126.150
+network_cidr = 192.168.126.0/24
+network_gateway = 192.168.126.10
+inspection_iprange = 192.168.126.160,192.168.126.199
+generate_service_certificate = true
+certificate_generation_ca = local
+
+:wq (save and exit) 
+
+Install the undercloud.
+
+[stack@director ~]$ openstack undercloud install
+
+
+Once the installation completed you will see the following text:
+
+#############################################################################
+Undercloud install complete.
+
+The file containing this installation's passwords is at
+/home/stack/undercloud-passwords.conf.
+
+There is also a stackrc file at /home/stack/stackrc.
+
+These files are needed to interact with the OpenStack services, and should be
+secured.
+
+#############################################################################
+
+Import overcloud images.
+
+[stack@director ~]$ source stackrc 
+
+[stack@director ~]$ sudo yum install rhosp-director-images rhosp-director-images-ipa -y
+
+
+[stack@director ~]$ cp /usr/share/rhosp-director-images/overcloud-full-latest-* ~/images/
+
+[stack@director ~]$ cp /usr/share/rhosp-director-images/ironic-python-agent-latest-* ~/images/
+
+[stack@director ~]$ cd ~/images/
+
+[stack@director images]$ ls -l 
+total 1390012
+-rw-r--r--. 1 stack stack  349583360 Oct  1 10:42 ironic-python-agent-latest-8.0.tar
+-rw-r--r--. 1 stack stack 1073786880 Oct  1 10:41 overcloud-full-latest-8.0.tar
+
+[stack@director images]$ tar -xf ironic-python-agent-latest-10.0.tar 
+
+[stack@director images]$ tar -xf overcloud-full-latest-10.0.tar 
+
+[stack@director images]$ ls -l 
+total 2780024
+-rw-r--r--. 1 stack stack  344421623 Apr 16  2016 ironic-python-agent.initramfs
+-rwxr-xr-x. 1 stack stack    5153408 Apr 16  2016 ironic-python-agent.kernel
+-rw-r--r--. 1 stack stack  349583360 Oct  1 10:42 ironic-python-agent-latest-8.0.tar
+-rw-r--r--. 1 stack stack   40324447 Apr 16  2016 overcloud-full.initrd
+-rw-r--r--. 1 stack stack 1073786880 Oct  1 10:41 overcloud-full-latest-8.0.tar
+-rw-r--r--. 1 stack stack 1028305920 Apr 16  2016 overcloud-full.qcow2
+-rwxr-xr-x. 1 stack stack    5153408 Apr 16  2016 overcloud-full.vmlinuz
+
+
+[stack@director images]$ openstack image list
+
+[stack@director images]$ openstack overcloud image upload --image-path /home/stack/images/
+
+[stack@director images]$ openstack image list
++--------------------------------------+------------------------+--------+
+| ID                                   | Name                   | Status |
++--------------------------------------+------------------------+--------+
+| f9a1cef2-33f4-407b-a4c5-2c32465859fa | bm-deploy-ramdisk      | active |
+| 426ce4d6-ed35-407b-8e1c-ca1c7b9927e0 | bm-deploy-kernel       | active |
+| c3dd116c-2a0a-4ff8-a7fc-0ff6dbbce412 | overcloud-full         | active |
+| 6d0a652a-ab8c-4672-8785-c2b006ce0997 | overcloud-full-initrd  | active |
+| 9c2d166c-a4c7-4843-aad4-c9f940aede5f | overcloud-full-vmlinuz | active |
++--------------------------------------+------------------------+--------+
+
+Configure DNS on undercloud network.
+
+[stack@director images]$ neutron subnet-list
++--------------------------------------+------+------------------+--------------------------------------------------------+
+| id                                   | name | cidr             | allocation_pools                                       |
++--------------------------------------+------+------------------+--------------------------------------------------------+
+| cd50735b-394d-4ed3-9935-3326390733d5 |      | 192.168.126.0/24 | {"start": "192.168.126.100", "end": "192.168.126.150"} |
++--------------------------------------+------+------------------+--------------------------------------------------------+
+
+[stack@director images]$ neutron subnet-show cd50735b-394d-4ed3-9935-3326390733d5
++-------------------+-------------------------------------------------------------------+
+| Field             | Value                                                             |
++-------------------+-------------------------------------------------------------------+
+| allocation_pools  | {"start": "192.168.126.100", "end": "192.168.126.150"}            |
+| cidr              | 192.168.126.0/24                                                  |
+| created_at        | 2017-09-30T19:27:22Z                                              |
+| description       |                                                                   |
+| dns_nameservers   |                                                                   |
+| enable_dhcp       | True                                                              |
+| gateway_ip        | 192.168.126.1                                                     |
+| host_routes       | {"destination": "169.254.169.254/32", "nexthop": "192.168.126.1"} |
+| id                | cd50735b-394d-4ed3-9935-3326390733d5                              |
+| ip_version        | 4                                                                 |
+| ipv6_address_mode |                                                                   |
+| ipv6_ra_mode      |                                                                   |
+| name              |                                                                   |
+| network_id        | fc567039-144c-409e-b2f7-28bee2ec030b                              |
+| project_id        | fb474397aaf44658a33411642270f015                                  |
+| revision_number   | 2                                                                 |
+| service_types     |                                                                   |
+| subnetpool_id     |                                                                   |
+| tenant_id         | fb474397aaf44658a33411642270f015                                  |
+| updated_at        | 2017-09-30T19:27:22Z                                              |
++-------------------+-------------------------------------------------------------------+
+
+
+[stack@director images]$ neutron subnet-update cd50735b-394d-4ed3-9935-3326390733d5 --dns-nameserver 192.168.122.1
+
+[stack@director images]$ neutron subnet-show cd50735b-394d-4ed3-9935-3326390733d5
++-------------------+-------------------------------------------------------------------+
+| Field             | Value                                                             |
++-------------------+-------------------------------------------------------------------+
+| allocation_pools  | {"start": "192.168.126.100", "end": "192.168.126.150"}            |
+| cidr              | 192.168.126.0/24                                                  |
+| created_at        | 2017-09-30T19:27:22Z                                              |
+| description       |                                                                   |
+| dns_nameservers   | 192.168.122.1                                                     |
+| enable_dhcp       | True                                                              |
+| gateway_ip        | 192.168.126.1                                                     |
+| host_routes       | {"destination": "169.254.169.254/32", "nexthop": "192.168.126.1"} |
+| id                | cd50735b-394d-4ed3-9935-3326390733d5                              |
+| ip_version        | 4                                                                 |
+| ipv6_address_mode |                                                                   |
+| ipv6_ra_mode      |                                                                   |
+| name              |                                                                   |
+| network_id        | fc567039-144c-409e-b2f7-28bee2ec030b                              |
+| project_id        | fb474397aaf44658a33411642270f015                                  |
+| revision_number   | 3                                                                 |
+| service_types     |                                                                   |
+| subnetpool_id     |                                                                   |
+| tenant_id         | fb474397aaf44658a33411642270f015                                  |
+| updated_at        | 2017-10-01T05:17:36Z                                              |
++-------------------+-------------------------------------------------------------------+
+
+
+
+Now go to the Hypervisor (Physical Machine) to create VMs for controller and compute nodes 
+
+[root@foundation20 ~]# cd /var/lib/libvirt/images/
+
+[root@foundation20 images]# qemu-img create -f qcow2 -o preallocation=metadata overcloud-controller.qcow2 60G
+
+[root@foundation20 images]# qemu-img create -f qcow2 -o preallocation=metadata overcloud-compute1.qcow2 60G
+
+[root@foundation20 images]# qemu-img create -f qcow2 -o preallocation=metadata overcloud-compute2.qcow2 60G
+
+[root@foundation20 images]# ls -lh 
+total 75G
+-rw-r--r--. 1 qemu qemu 74G Oct  1 10:50 director.qcow2
+-rw-r--r--. 1 root root 61G Oct  1 10:50 overcloud-compute1.qcow2
+-rw-r--r--. 1 root root 61G Oct  1 10:50 overcloud-compute2.qcow2
+-rw-r--r--. 1 root root 61G Oct  1 10:50 overcloud-controller.qcow2
+
+
+[root@foundation20 images]# chown qemu:qemu *
+[root@foundation20 images]# ls -l 
+total 15732836
+-rw-------. 1 qemu qemu 77588332544 Oct  4 21:34 director.qcow2
+-rw-r--r--. 1 qemu qemu 64434601984 Oct  4 21:33 overcloud-compute1.qcow2
+-rw-r--r--. 1 qemu qemu 64434601984 Oct  4 21:33 overcloud-compute2.qcow2
+-rw-r--r--. 1 qemu qemu 64434601984 Oct  4 21:33 overcloud-controller.qcow2
+
+
+Now check the CPU Family Name from director machine
+
+[root@foundation20 images]# virsh dumpxml director | grep  "cpu mode" -A 3 
+
+ <cpu mode='custom' match='exact'>
+    <model fallback='allow'>Westmere</model>
+  </cpu>
+  <clock offset='utc'>
+
+Please note that, my cpu mode or family is "Westmere". you could have different so check it accordingly. 
+
+[root@foundation20 images]# virt-install --ram 8192 --vcpus 2 --os-variant rhel7 --disk path=/var/lib/libvirt/images/overcloud-controller.qcow2,device=disk,bus=virtio,format=qcow2 --noautoconsole --vnc --network network:provisioning --network network:external --name overcloud-controller --cpu Westmere,+vmx --dry-run --print-xml > /tmp/overcloud-controller.xml
+
+
+[root@foundation20 images]# virt-install --ram 8192 --vcpus 2 --os-variant rhel7 --disk path=/var/lib/libvirt/images/overcloud-compute1.qcow2,device=disk,bus=virtio,format=qcow2 --noautoconsole --vnc --network network:provisioning --network network:external --name overcloud-compute1 --cpu Westmere,+vmx --dry-run --print-xml > /tmp/overcloud-compute1.xml
+
+
+[root@foundation20 images]# virt-install --ram 8192 --vcpus 2 --os-variant rhel7 --disk path=/var/lib/libvirt/images/overcloud-compute2.qcow2,device=disk,bus=virtio,format=qcow2 --noautoconsole --vnc --network network:provisioning --network network:external --name overcloud-compute2 --cpu Westmere,+vmx --dry-run --print-xml > /tmp/overcloud-compute2.xml
+
+
+
+[root@foundation20 images]# ls -l /tmp/overcloud-*.xml 
+-rw-r--r--. 1 root root 1970 Oct  1 10:56 /tmp/overcloud-compute1.xml
+-rw-r--r--. 1 root root 1970 Oct  1 10:57 /tmp/overcloud-compute2.xml
+-rw-r--r--. 1 root root 1974 Oct  1 10:55 /tmp/overcloud-controller.xml
+
+[root@foundation20 images]# virsh define --file /tmp/overcloud-controller.xml
+
+[root@foundation20 images]# virsh define --file /tmp/overcloud-compute1.xml
+
+[root@foundation20 images]# virsh define --file /tmp/overcloud-compute2.xml
+
+
+[root@foundation20 images]# 
+[root@foundation20 images]# virsh list --all 
+ Id    Name                           State
+----------------------------------------------------
+ 4     director                       running
+ -     overcloud-compute1             shut off
+ -     overcloud-compute2             shut off
+ -     overcloud-controller           shut off
+Now Create a stack user on Hypervisor (Physical Machine) and add it into sudoers list withh all permissions 
+
+[root@foundation20 ~]# useradd stack
+[root@foundation20 ~]# echo 'redhat' | passwd --stdin stack 
+
+[root@foundation20 ~]# echo "stack ALL=(root) NOPASSWD:ALL" | tee -a /etc/sudoers.d/stack
+
+[root@foundation20 ~]# chmod 0440 /etc/sudoers.d/stack
+[root@foundation20 ~]# usermod -aG libvirt stack 
+
+
+Now from director (undercloud) machine copy the ssh keys of stack user into hypervisor machine stack user 
+
+[stack@director ~]$ ssh-copy-id -i ~/.ssh/id_rsa.pub stack@192.168.122.1
+
+make sure after copying the ssh keys you should be able to access it without password 
+
+[stack@director ~]$ ssh stack@192.168.122.1
+
+[stack@foundation20 ~]$ exit
+
+
+On Version-10 These Step will be work but in version 13 will not support
+
+Save the MAC addresses of the NICs used for provisioning.
+
+[stack@director ~]$ virsh -c qemu+ssh://stack@192.168.122.1/system domiflist overcloud-controller | awk '$3 == "provisioning" {print $5};' > /tmp/nodes.txt
+
+[stack@director ~]$ virsh -c qemu+ssh://stack@192.168.122.1/system domiflist overcloud-compute1 | awk '$3 == "provisioning" {print $5};' >> /tmp/nodes.txt
+
+[stack@director ~]$ virsh -c qemu+ssh://stack@192.168.122.1/system domiflist overcloud-compute2 | awk '$3 == "provisioning" {print $5};' >> /tmp/nodes.txt
+
+[stack@director ~]$ cat /tmp/nodes.txt
+52:54:00:7b:94:a8
+52:54:00:a9:04:88
+52:54:00:b2:5d:61
+
+Please verify these MAC Address from the VMs. it shuold be from provisioning network. 
+
+
+Now create JSON format file to register the VMs nodes into ironic service for introspection 
+[stack@director ~]$jq . << EOF > ~/instackenv.json
+{
+"ssh-user": "stack",
+"ssh-key": "$(cat ~/.ssh/id_rsa)",
+"power_manager":
+"nova.virt.baremetal.virtual_power_driver.VirtualPowerManager",
+"host-ip": "192.168.122.1","arch": "x86_64",
+"nodes": [
+{
+"name": "controller",
+"pm_addr": "192.168.122.1",
+"pm_password": "$(cat ~/.ssh/id_rsa)",
+"pm_type": "pxe_ssh",
+"mac": [
+"$(sed -n 1p /tmp/nodes.txt)"
+],
+"cpu": "2",
+"memory": "8192",
+"disk": "60",
+"arch": "x86_64",
+"pm_user": "stack"
+},
+{
+"name": "compute1",
+"pm_addr": "192.168.122.1",
+"pm_password": "$(cat ~/.ssh/id_rsa)",
+"pm_type": "pxe_ssh",
+"mac": [
+"$(sed -n 2p /tmp/nodes.txt)"
+],
+"cpu": "2",
+"memory": "8192",
+"disk": "60",
+"arch": "x86_64",
+"pm_user": "stack"
+},
+{
+"name": "compute2",
+"pm_addr": "192.168.122.1",
+"pm_password": "$(cat ~/.ssh/id_rsa)",
+"pm_type": "pxe_ssh",
+"mac": [
+"$(sed -n 3p /tmp/nodes.txt)"
+],
+"cpu": "2",
+"memory": "8192",
+"disk": "60",
+"arch": "x86_64",
+"pm_user": "stack"
+}
+]
+}
+EOF
+[stack@director ~]$ cat  instackenv.json
+
+{
+  "nodes": [
+    {
+      "pm_user": "stack",
+      "arch": "x86_64",
+      "name": "controller",
+      "pm_addr": "192.168.122.1",
+      "pm_password": "-----BEGIN RSA PRIVATE KEY-----\nMIIEpAIBAAKCAQEAq6FDg1h2jTCee9+AKNQ6633ZI9F0nR2u8vKAmI2H7lUPofQo\nIZ00hhfQ7w55oRXvCENcNY4jd6IUGXgI1Il7Gr9STOReJgTQtuS1XcNYSBCMfeWp\nDwwPm9mj33SiGyFxP38/FWoHwa44/XcCjRR8FinZJ9ERXRBOKnWNnil2hu3V5jQh\nOL1YQyag7/NAWafWjAMzmHlTUMY2a7jdaL9iilOF6Bc4akh6KnxUSn8cSovjzuwE\nLZdMET+emtoOfn/hCQy57rs069pmOK5p4eLaYU5UftGDE3YrJ2NjUMkjUHKEU4TU\ncv+1itI958xg2sscHn3x3JrY0wuJd58gL2bQ4wIDAQABAoIBAQCQUiHYX9oIrdqG\n5ZD6RERrY77k3KuHtr83ce3q2hB0vDhSAmKAqZXSMFKzwuNKLox60VHHgweWAMeQ\nBxy9xAGtozYMjHgS1je/o6BTAQHKT4gkEavQiF7TufaP356027FEKLceRbPSDLPF\nh36wrYoOhRAi6C4GqMBh+cmlNs6BdDqSMCXItHvclfTF0/zkh0UmdF79NhS2MbiT\nfpIUFPWgUJdB4lausDqSUeIH8iJK1cb4UsKsRsJmUI4XkKiIdqdcyfMs35X07uNa\niDrzVtp4ZhK4XsatgQ+Xtit6ofVyfsJUYSRYN5irNxD1xOphGWsBTkCXxbsj5Qby\nk/d2jCchAoGBANi7PYrm3LE2h6jWnP9lmciU6JPgQplxdSLem7JMNR2++m07oBoV\nlcrw10XKctqYnQl7uboT9DqzUqjhJaK5UPIc4/9zKJcLEjYm7ZTYIGda8Tg0/w/O\nzXwEHjs8qq7ZLDJxak0PIj/s6j5veOi0L4BZTUzo0g0FBwgDipRk7FNzAoGBAMq6\nDz/aKBhgbaqe0ATGdJtHGoY39wUuaS/OzZFe9rE6rV6VdqWMGUVcKFKwnmg80a0m\nClSMHo5wCuugOesUcPVTjIiiZ3sa857P8dVoOAOyuMuFvqDdlH660O8V+Z3162ux\nLA1oDjG4rua4bXuIVTGmFpkwruml7XObhjQQ4pDRAoGAO+c00WmR4iFSSaZX6ndo\nk/okdorrnYGwgJzKp/NMUxZwHTT3wX3p0xfSSGX2bNj1vqNF6FqPjJH37NmeD2Xt\nK540nmxz8ZuLww/rZtJ90lNejMyJGxNr1DVHLdRM0NsRzjduzDG8o7KV4//niVoU\nLwN/zBwlwpd7JAnmibGDaGUCgYAz6LJw6h5sJ3zNPH8NSfefrvQ2u+vPctPSPwTa\nHVPTi6/K0UChIR9zaCaXDcxx6mjSCjSI85v7YusY7F0IOaK23p7Ueak/l2YcGyjU\nOSxmngO9cVCfhj04ugM3xQu2i7qtR599C1DfIGgAgebew8j0vo94yENxZmBHwuH5\nQP2SkQKBgQC88OQkwB6edenJ/US86r2K3dP2FkQPT7kWCNKDNMGbsbgRNB8bFIWU\nqdUxGKgRRviaxiXpMIQ/GHsJ1K9RM0LnUBRxUCltMWAYYVscZnvzFEa2BqPZQaU4\nENJncN0wZYRMB4yF4BMEzh/SVRb9n1QCNG/+1GZ8cSaxaBfSmLI9vQ==\n-----END RSA PRIVATE KEY-----",
+      "pm_type": "pxe_ssh",
+      "mac": [
+        "52:54:00:15:29:10"
+      ],
+      "cpu": "2",
+      "memory": "8192",
+      "disk": "60"
+    },
+    {
+      "pm_user": "stack",
+      "arch": "x86_64",
+      "name": "compute1",
+      "pm_addr": "192.168.122.1",
+      "pm_password": "-----BEGIN RSA PRIVATE KEY-----\nMIIEpAIBAAKCAQEAq6FDg1h2jTCee9+AKNQ6633ZI9F0nR2u8vKAmI2H7lUPofQo\nIZ00hhfQ7w55oRXvCENcNY4jd6IUGXgI1Il7Gr9STOReJgTQtuS1XcNYSBCMfeWp\nDwwPm9mj33SiGyFxP38/FWoHwa44/XcCjRR8FinZJ9ERXRBOKnWNnil2hu3V5jQh\nOL1YQyag7/NAWafWjAMzmHlTUMY2a7jdaL9iilOF6Bc4akh6KnxUSn8cSovjzuwE\nLZdMET+emtoOfn/hCQy57rs069pmOK5p4eLaYU5UftGDE3YrJ2NjUMkjUHKEU4TU\ncv+1itI958xg2sscHn3x3JrY0wuJd58gL2bQ4wIDAQABAoIBAQCQUiHYX9oIrdqG\n5ZD6RERrY77k3KuHtr83ce3q2hB0vDhSAmKAqZXSMFKzwuNKLox60VHHgweWAMeQ\nBxy9xAGtozYMjHgS1je/o6BTAQHKT4gkEavQiF7TufaP356027FEKLceRbPSDLPF\nh36wrYoOhRAi6C4GqMBh+cmlNs6BdDqSMCXItHvclfTF0/zkh0UmdF79NhS2MbiT\nfpIUFPWgUJdB4lausDqSUeIH8iJK1cb4UsKsRsJmUI4XkKiIdqdcyfMs35X07uNa\niDrzVtp4ZhK4XsatgQ+Xtit6ofVyfsJUYSRYN5irNxD1xOphGWsBTkCXxbsj5Qby\nk/d2jCchAoGBANi7PYrm3LE2h6jWnP9lmciU6JPgQplxdSLem7JMNR2++m07oBoV\nlcrw10XKctqYnQl7uboT9DqzUqjhJaK5UPIc4/9zKJcLEjYm7ZTYIGda8Tg0/w/O\nzXwEHjs8qq7ZLDJxak0PIj/s6j5veOi0L4BZTUzo0g0FBwgDipRk7FNzAoGBAMq6\nDz/aKBhgbaqe0ATGdJtHGoY39wUuaS/OzZFe9rE6rV6VdqWMGUVcKFKwnmg80a0m\nClSMHo5wCuugOesUcPVTjIiiZ3sa857P8dVoOAOyuMuFvqDdlH660O8V+Z3162ux\nLA1oDjG4rua4bXuIVTGmFpkwruml7XObhjQQ4pDRAoGAO+c00WmR4iFSSaZX6ndo\nk/okdorrnYGwgJzKp/NMUxZwHTT3wX3p0xfSSGX2bNj1vqNF6FqPjJH37NmeD2Xt\nK540nmxz8ZuLww/rZtJ90lNejMyJGxNr1DVHLdRM0NsRzjduzDG8o7KV4//niVoU\nLwN/zBwlwpd7JAnmibGDaGUCgYAz6LJw6h5sJ3zNPH8NSfefrvQ2u+vPctPSPwTa\nHVPTi6/K0UChIR9zaCaXDcxx6mjSCjSI85v7YusY7F0IOaK23p7Ueak/l2YcGyjU\nOSxmngO9cVCfhj04ugM3xQu2i7qtR599C1DfIGgAgebew8j0vo94yENxZmBHwuH5\nQP2SkQKBgQC88OQkwB6edenJ/US86r2K3dP2FkQPT7kWCNKDNMGbsbgRNB8bFIWU\nqdUxGKgRRviaxiXpMIQ/GHsJ1K9RM0LnUBRxUCltMWAYYVscZnvzFEa2BqPZQaU4\nENJncN0wZYRMB4yF4BMEzh/SVRb9n1QCNG/+1GZ8cSaxaBfSmLI9vQ==\n-----END RSA PRIVATE KEY-----",
+      "pm_type": "pxe_ssh",
+      "mac": [
+        "52:54:00:70:5e:ef"
+      ],
+      "cpu": "2",
+      "memory": "8192",
+      "disk": "60"
+    },
+    {
+      "pm_user": "stack",
+      "arch": "x86_64",
+      "name": "compute2",
+      "pm_addr": "192.168.122.1",
+      "pm_password": "-----BEGIN RSA PRIVATE KEY-----\nMIIEpAIBAAKCAQEAq6FDg1h2jTCee9+AKNQ6633ZI9F0nR2u8vKAmI2H7lUPofQo\nIZ00hhfQ7w55oRXvCENcNY4jd6IUGXgI1Il7Gr9STOReJgTQtuS1XcNYSBCMfeWp\nDwwPm9mj33SiGyFxP38/FWoHwa44/XcCjRR8FinZJ9ERXRBOKnWNnil2hu3V5jQh\nOL1YQyag7/NAWafWjAMzmHlTUMY2a7jdaL9iilOF6Bc4akh6KnxUSn8cSovjzuwE\nLZdMET+emtoOfn/hCQy57rs069pmOK5p4eLaYU5UftGDE3YrJ2NjUMkjUHKEU4TU\ncv+1itI958xg2sscHn3x3JrY0wuJd58gL2bQ4wIDAQABAoIBAQCQUiHYX9oIrdqG\n5ZD6RERrY77k3KuHtr83ce3q2hB0vDhSAmKAqZXSMFKzwuNKLox60VHHgweWAMeQ\nBxy9xAGtozYMjHgS1je/o6BTAQHKT4gkEavQiF7TufaP356027FEKLceRbPSDLPF\nh36wrYoOhRAi6C4GqMBh+cmlNs6BdDqSMCXItHvclfTF0/zkh0UmdF79NhS2MbiT\nfpIUFPWgUJdB4lausDqSUeIH8iJK1cb4UsKsRsJmUI4XkKiIdqdcyfMs35X07uNa\niDrzVtp4ZhK4XsatgQ+Xtit6ofVyfsJUYSRYN5irNxD1xOphGWsBTkCXxbsj5Qby\nk/d2jCchAoGBANi7PYrm3LE2h6jWnP9lmciU6JPgQplxdSLem7JMNR2++m07oBoV\nlcrw10XKctqYnQl7uboT9DqzUqjhJaK5UPIc4/9zKJcLEjYm7ZTYIGda8Tg0/w/O\nzXwEHjs8qq7ZLDJxak0PIj/s6j5veOi0L4BZTUzo0g0FBwgDipRk7FNzAoGBAMq6\nDz/aKBhgbaqe0ATGdJtHGoY39wUuaS/OzZFe9rE6rV6VdqWMGUVcKFKwnmg80a0m\nClSMHo5wCuugOesUcPVTjIiiZ3sa857P8dVoOAOyuMuFvqDdlH660O8V+Z3162ux\nLA1oDjG4rua4bXuIVTGmFpkwruml7XObhjQQ4pDRAoGAO+c00WmR4iFSSaZX6ndo\nk/okdorrnYGwgJzKp/NMUxZwHTT3wX3p0xfSSGX2bNj1vqNF6FqPjJH37NmeD2Xt\nK540nmxz8ZuLww/rZtJ90lNejMyJGxNr1DVHLdRM0NsRzjduzDG8o7KV4//niVoU\nLwN/zBwlwpd7JAnmibGDaGUCgYAz6LJw6h5sJ3zNPH8NSfefrvQ2u+vPctPSPwTa\nHVPTi6/K0UChIR9zaCaXDcxx6mjSCjSI85v7YusY7F0IOaK23p7Ueak/l2YcGyjU\nOSxmngO9cVCfhj04ugM3xQu2i7qtR599C1DfIGgAgebew8j0vo94yENxZmBHwuH5\nQP2SkQKBgQC88OQkwB6edenJ/US86r2K3dP2FkQPT7kWCNKDNMGbsbgRNB8bFIWU\nqdUxGKgRRviaxiXpMIQ/GHsJ1K9RM0LnUBRxUCltMWAYYVscZnvzFEa2BqPZQaU4\nENJncN0wZYRMB4yF4BMEzh/SVRb9n1QCNG/+1GZ8cSaxaBfSmLI9vQ==\n-----END RSA PRIVATE KEY-----",
+      "pm_type": "pxe_ssh",
+      "mac": [
+        "52:54:00:57:83:60"
+      ],
+      "cpu": "2",
+      "memory": "8192",
+      "disk": "60"
+    }
+  ],
+  "arch": "x86_64",
+  "host-ip": "192.168.122.1",
+  "power_manager": "nova.virt.baremetal.virtual_power_driver.VirtualPowerManager",
+  "ssh-key": "-----BEGIN RSA PRIVATE KEY-----\nMIIEpAIBAAKCAQEAq6FDg1h2jTCee9+AKNQ6633ZI9F0nR2u8vKAmI2H7lUPofQo\nIZ00hhfQ7w55oRXvCENcNY4jd6IUGXgI1Il7Gr9STOReJgTQtuS1XcNYSBCMfeWp\nDwwPm9mj33SiGyFxP38/FWoHwa44/XcCjRR8FinZJ9ERXRBOKnWNnil2hu3V5jQh\nOL1YQyag7/NAWafWjAMzmHlTUMY2a7jdaL9iilOF6Bc4akh6KnxUSn8cSovjzuwE\nLZdMET+emtoOfn/hCQy57rs069pmOK5p4eLaYU5UftGDE3YrJ2NjUMkjUHKEU4TU\ncv+1itI958xg2sscHn3x3JrY0wuJd58gL2bQ4wIDAQABAoIBAQCQUiHYX9oIrdqG\n5ZD6RERrY77k3KuHtr83ce3q2hB0vDhSAmKAqZXSMFKzwuNKLox60VHHgweWAMeQ\nBxy9xAGtozYMjHgS1je/o6BTAQHKT4gkEavQiF7TufaP356027FEKLceRbPSDLPF\nh36wrYoOhRAi6C4GqMBh+cmlNs6BdDqSMCXItHvclfTF0/zkh0UmdF79NhS2MbiT\nfpIUFPWgUJdB4lausDqSUeIH8iJK1cb4UsKsRsJmUI4XkKiIdqdcyfMs35X07uNa\niDrzVtp4ZhK4XsatgQ+Xtit6ofVyfsJUYSRYN5irNxD1xOphGWsBTkCXxbsj5Qby\nk/d2jCchAoGBANi7PYrm3LE2h6jWnP9lmciU6JPgQplxdSLem7JMNR2++m07oBoV\nlcrw10XKctqYnQl7uboT9DqzUqjhJaK5UPIc4/9zKJcLEjYm7ZTYIGda8Tg0/w/O\nzXwEHjs8qq7ZLDJxak0PIj/s6j5veOi0L4BZTUzo0g0FBwgDipRk7FNzAoGBAMq6\nDz/aKBhgbaqe0ATGdJtHGoY39wUuaS/OzZFe9rE6rV6VdqWMGUVcKFKwnmg80a0m\nClSMHo5wCuugOesUcPVTjIiiZ3sa857P8dVoOAOyuMuFvqDdlH660O8V+Z3162ux\nLA1oDjG4rua4bXuIVTGmFpkwruml7XObhjQQ4pDRAoGAO+c00WmR4iFSSaZX6ndo\nk/okdorrnYGwgJzKp/NMUxZwHTT3wX3p0xfSSGX2bNj1vqNF6FqPjJH37NmeD2Xt\nK540nmxz8ZuLww/rZtJ90lNejMyJGxNr1DVHLdRM0NsRzjduzDG8o7KV4//niVoU\nLwN/zBwlwpd7JAnmibGDaGUCgYAz6LJw6h5sJ3zNPH8NSfefrvQ2u+vPctPSPwTa\nHVPTi6/K0UChIR9zaCaXDcxx6mjSCjSI85v7YusY7F0IOaK23p7Ueak/l2YcGyjU\nOSxmngO9cVCfhj04ugM3xQu2i7qtR599C1DfIGgAgebew8j0vo94yENxZmBHwuH5\nQP2SkQKBgQC88OQkwB6edenJ/US86r2K3dP2FkQPT7kWCNKDNMGbsbgRNB8bFIWU\nqdUxGKgRRviaxiXpMIQ/GHsJ1K9RM0LnUBRxUCltMWAYYVscZnvzFEa2BqPZQaU4\nENJncN0wZYRMB4yF4BMEzh/SVRb9n1QCNG/+1GZ8cSaxaBfSmLI9vQ==\n-----END RSA PRIVATE KEY-----",
+  "ssh-user": "stack"
+}
+
+
+Import nodes into Ironic and set them to bootable.
+
+[stack@director ~]$ openstack baremetal node list 
+
+[stack@director ~]$ openstack baremetal import --json ~/instackenv.json
+
+
+
+Started Mistral Workflow. Execution ID: 20b49dd5-eec5-45a4-9b14-329c486eeced
+Successfully registered node UUID 03acbcf0-1800-4336-b4a2-b08976b0b0a2
+Successfully registered node UUID 4a830920-f239-4b89-8104-6400e930f976
+Successfully registered node UUID 7533aff5-7214-4e4b-b607-1a7a91495a04
+Started Mistral Workflow. Execution ID: 193bc425-309d-4ede-89b5-f3b2450d93df
+Successfully set all nodes to available.
+
+
+
+[stack@director ~]$ openstack baremetal node list 
++--------------------------------------+------------+---------------+-------------+--------------------+-------------+
+| UUID                                 | Name       | Instance UUID | Power State | Provisioning State | Maintenance |
++--------------------------------------+------------+---------------+-------------+--------------------+-------------+
+| 03acbcf0-1800-4336-b4a2-b08976b0b0a2 | controller | None          | power off   | available          | False       |
+| 4a830920-f239-4b89-8104-6400e930f976 | compute1   | None          | power off   | available          | False       |
+| 7533aff5-7214-4e4b-b607-1a7a91495a04 | compute2   | None          | power off   | available          | False       |
++--------------------------------------+------------+---------------+-------------+--------------------+-------------+
+
+
+*********************************************************************************************
+ON Version-13 use these command to scan the mac add and node registration with mistrial service.
+
+Install and Configure vbmc (Virtual BMC) on undercloud
+Vbmc is power management tool for virtual machines, VMs can be managed via ipmitool.
+
+Using vbmc we can power off, power on and also verify the power status of a VM. 
+We require vbmc as undercloud will require to power on / off  VMs during the deployment.
+
+Note: vbmc is the replacement of pxe_ssh as pxe_ssh is depreciated now.
+
+Run below yum install command to install virtualbmc,
+
+[stack@undercloud ~]$ sudo yum install python-virtualbmc -y
+
+set the machines port number and username with password to boot the machine
+
+[stack@undercloud ~]$ vbmc add overcloud-compute1 --port 6001 --username admin --password password --libvirt-uri qemu+ssh://root@192.168.122.1/system
+[stack@undercloud ~]$ vbmc start overcloud-compute1
+[stack@undercloud ~]$ vbmc add overcloud-compute2 --port 6002 --username admin --password password --libvirt-uri qemu+ssh://root@192.168.122.1/system
+[stack@undercloud ~]$ vbmc start overcloud-compute2
+[stack@undercloud ~]$ vbmc add overcloud-controller --port 6003 --username admin --password password --libvirt-uri qemu+ssh://root@192.168.122.1/system
+[stack@undercloud ~]$ vbmc start overcloud-controller
+
+Verify the VMs status and its ports,
+
+[stack@undercloud ~]$ vbmc list
++----------------------+---------+---------+------+
+|     Domain name      |  Status | Address | Port |
++----------------------+---------+---------+------+
+|  overcloud-compute1  | running |    ::   | 6001 |
+|  overcloud-compute2  | running |    ::   | 6002 |
+| overcloud-controller | running |    ::   | 6003 |
++----------------------+---------+---------+------+
+[stack@undercloud ~]$
+
+Note - create password less ssh from slack@director to root@basemachine
+
+
+To view power status of VMs, use below command,
+
+[stack@undercloud ~]$ ipmitool -I lanplus -U admin -P password -H 127.0.0.1 -p 6001 power status
+Chassis Power is off
+[stack@undercloud ~]$ ipmitool -I lanplus -U admin -P password -H 127.0.0.1 -p 6002 power status
+Chassis Power is off
+[stack@undercloud ~]$ ipmitool -I lanplus -U admin -P password -H 127.0.0.1 -p 6003 power status
+Chassis Power is off
+[stack@undercloud ~]$
+
+Create and Import overcloud nodes inventory via json file  ?
+
+[root@kvm-hypervisor ~]# virsh domiflist overcloud-compute1 | grep provisioning
+-          network    provisioning virtio      52:54:00:08:63:bd
+[root@kvm-hypervisor ~]# virsh domiflist overcloud-compute2 | grep provisioning
+-          network    provisioning virtio      52:54:00:72:1d:21
+[root@kvm-hypervisor ~]# virsh domiflist overcloud-controller | grep provisioning
+-          network    provisioning virtio      52:54:00:0a:dd:57
+[root@kvm-hypervisor ~]#
+
+Now create a json file with name “overcloud-stackenv.json”  on undercloud node using the mac ?
+
+[stack@undercloud ~]$ vi overcloud-stackenv.json
+{
+  "nodes": [
+    {
+      "arch": "x86_64",
+      "disk": "60",
+      "memory": "8192",
+      "name": "overcloud-compute1",
+      "pm_user": "admin",
+      "pm_addr": "127.0.0.1",
+      "pm_password": "password",
+      "pm_port": "6001",
+      "pm_type": "pxe_ipmitool",
+      "mac": [
+        "52:54:00:08:63:bd"
+      ],
+      "cpu": "2"
+    },
+    {
+      "arch": "x86_64",
+      "disk": "60",
+      "memory": "8192",
+      "name": "overcloud-compute2",
+      "pm_user": "admin",
+      "pm_addr": "127.0.0.1",
+      "pm_password": "password",
+      "pm_port": "6002",
+      "pm_type": "pxe_ipmitool",
+      "mac": [
+        "52:54:00:72:1d:21"
+      ],
+      "cpu": "2"
+    },
+    {
+      "arch": "x86_64",
+      "disk": "60",
+      "memory": "8192",
+      "name": "overcloud-controller",
+      "pm_user": "admin",
+      "pm_addr": "127.0.0.1",
+      "pm_password": "password",
+      "pm_port": "6003",
+      "pm_type": "pxe_ipmitool",
+      "mac": [
+        "52:54:00:0a:dd:57"
+      ],
+      "cpu": "2"
+    }
+  ]
+}
+
+
+Note: Replace the mac address of the VMs that suits to your environment.
+
+[stack@undercloud ~]$ source stackrc
+
+openstack baremetal import --json
+(undercloud) [stack@undercloud ~]$ openstack overcloud node import overcloud-stackenv.json
+(undercloud) [stack@undercloud ~]$ openstack baremetal node list
+
+*********************************************************************************************
+
+Set nodes to managed.
+
+[stack@director ~]$ for node in $(openstack baremetal node list -c UUID -f value) ; do openstack baremetal node manage $node ; done
+
+[stack@director ~]$ openstack baremetal node list 
++--------------------------------------+------------+---------------+-------------+--------------------+-------------+
+| UUID                                 | Name       | Instance UUID | Power State | Provisioning State | Maintenance |
++--------------------------------------+------------+---------------+-------------+--------------------+-------------+
+| 03acbcf0-1800-4336-b4a2-b08976b0b0a2 | controller | None          | power off   | manageable         | False       |
+| 4a830920-f239-4b89-8104-6400e930f976 | compute1   | None          | power off   | manageable         | False       |
+| 7533aff5-7214-4e4b-b607-1a7a91495a04 | compute2   | None          | power off   | manageable         | False       |
++--------------------------------------+------------+---------------+-------------+--------------------+-------------+
+
+
+Run introspection against all managed nodes.
+
+[stack@director ~]$ openstack overcloud node introspect --all-manageable --provide 
+                                  OR
+# openstack overcloud node import --introspect --provide overcloud-stackenv.json
+
+(undercloud) [stack@undercloud ~]$ openstack baremetal node list
+
+Started Mistral Workflow. Execution ID: 02a7686f-dfe0-46f1-94e0-eed148337239
+Waiting for introspection to finish...
+Introspection for UUID 4a830920-f239-4b89-8104-6400e930f976 finished successfully.
+Introspection for UUID 03acbcf0-1800-4336-b4a2-b08976b0b0a2 finished successfully.
+Introspection for UUID 7533aff5-7214-4e4b-b607-1a7a91495a04 finished successfully.
+Introspection completed.
+Started Mistral Workflow. Execution ID: fd05d067-a1d7-4a46-bb25-44f32ebfd6b8
+
+Please note that it will take approx 20-30 minutes 
+
+
+Now tag Control, compute1 and compute2 Nodes into profiles 
+
+[stack@director ~]$ openstack baremetal node list 
++--------------------------------------+------------+---------------+-------------+--------------------+-------------+
+| UUID                                 | Name       | Instance UUID | Power State | Provisioning State | Maintenance |
++--------------------------------------+------------+---------------+-------------+--------------------+-------------+
+| 03acbcf0-1800-4336-b4a2-b08976b0b0a2 | controller | None          | power off   | available          | False       |
+| 4a830920-f239-4b89-8104-6400e930f976 | compute1   | None          | power off   | available          | False       |
+| 7533aff5-7214-4e4b-b607-1a7a91495a04 | compute2   | None          | power off   | available          | False       |
++--------------------------------------+------------+---------------+-------------+--------------------+-------------+
+
+[stack@director ~]$ openstack baremetal node set --property capabilities='profile:control,boot_option:local' 03acbcf0-1800-4336-b4a2-b08976b0b0a2
+
+[stack@director ~]$ openstack baremetal node set --property capabilities='profile:compute,boot_option:local' 4a830920-f239-4b89-8104-6400e930f976
+
+[stack@director ~]$ openstack baremetal node set --property capabilities='profile:compute,boot_option:local' 7533aff5-7214-4e4b-b607-1a7a91495a04
+
+Check Overcloud Profiles.
+
+[stack@director ~]$ openstack overcloud profiles list 
++--------------------------------------+------------+-----------------+-----------------+-------------------+
+| Node UUID                            | Node Name  | Provision State | Current Profile | Possible Profiles |
++--------------------------------------+------------+-----------------+-----------------+-------------------+
+| 03acbcf0-1800-4336-b4a2-b08976b0b0a2 | controller | available       | control         |                   |
+| 4a830920-f239-4b89-8104-6400e930f976 | compute1   | available       | compute         |                   |
+| 7533aff5-7214-4e4b-b607-1a7a91495a04 | compute2   | available       | compute         |                   |
++--------------------------------------+------------+-----------------+-----------------+-------------------+
+
+Deploy Overcloud
+
+Clone the github repository.
+
+[stack@director ~]$ openstack overcloud deploy --templates --control-scale 1 --compute-scale 2 --neutron-tunnel-types vxlan --neutron-network-type vxlan
+
+
+openstack overcloud deploy --templates   --control-scale 1 --compute-scale 2 --control-flavor control --compute-flavor compute --timeout 240
+
+
+Please note that the above command will take approx 40 minutes or more depending on hardware or vm performance. 
+So, you have to wait until the above command will not finished. 
+
+
+Once finished, List overcloud nodes.
+
+[stack@director ~]$ source ~/stackrc
+
+[stack@director ~]$ openstack server list 
+
+
+
+
+   docker login registry.redhat.io --username deepaksrivastavajk --password Noida@101
+   openstack overcloud container image prepare --namespace=registry.redhat.io/rhosp13 --push-destination=192.168.126.90:8787 --prefix=openstack- --tag-from-label {version}-{release} --output-env-file=/home/stack/templates/overcloud_images.yaml --output-images-file /home/stack/local_registry_images.yaml
+   ll
+   cat local_registry_images.yaml
+   cat templates/overcloud_images.yaml
+   openstack overcloud container image upload --config-file /home/stack/local_registry_images.yaml --verbose
+   curl http://192.168.126.90:8787/v2/_catalog | jq .repositories[]
+   curl http://192.168.126.90:8787/v2/_catalog?n=150 | jq .repositories[]
+   openstack overcloud deploy --templates  -e /home/stack/templates/overcloud_images.yaml --control-scale 3 --compute-scale 1 --control-flavor control --compute-flavor compute --ntp-server pool.ntp.org
+
